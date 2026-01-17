@@ -24,6 +24,10 @@ werkzeug==3.0.1
 # Authentication
 Flask-JWT-Extended==4.6.0
 bcrypt==4.1.2
+PyJWT==2.8.0
+
+# AI Services
+groq==0.4.2
 
 # PDF Processing
 pdfplumber==0.10.3
