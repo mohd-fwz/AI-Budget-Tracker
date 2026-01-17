@@ -188,19 +188,30 @@ def update_financial_profile():
             profile = UserProfile(user_id=user_id)
             db.session.add(profile)
 
-        # Update fields
+        # Update fields - handle empty strings as None for numeric fields
         if 'monthly_income' in data:
-            profile.monthly_income = data['monthly_income']
+            value = data['monthly_income']
+            # Convert empty string or 0 to None, otherwise convert to float
+            if value == '' or value is None:
+                profile.monthly_income = None
+            else:
+                try:
+                    profile.monthly_income = float(value) if value else None
+                except (ValueError, TypeError):
+                    profile.monthly_income = None
 
         if 'family_size' in data:
             family_size = data['family_size']
-            if family_size and family_size > 0:
-                profile.family_size = family_size
+            # Handle empty string
+            if family_size == '' or family_size is None:
+                profile.family_size = 1  # Default to 1
+            elif family_size and int(family_size) > 0:
+                profile.family_size = int(family_size)
             else:
                 return jsonify({'error': 'Family size must be greater than 0'}), 400
 
         if 'occupation' in data:
-            profile.occupation = data['occupation']
+            profile.occupation = data['occupation'] if data['occupation'] else None
 
         if 'age_group' in data:
             age_group = data['age_group']
@@ -210,10 +221,18 @@ def update_financial_profile():
                     'error': 'Invalid age group',
                     'message': f'Must be one of: {", ".join(valid_groups)}'
                 }), 400
-            profile.age_group = age_group
+            profile.age_group = age_group if age_group else None
 
         if 'savings_goal' in data:
-            profile.savings_goal = data['savings_goal']
+            value = data['savings_goal']
+            # Convert empty string to None, otherwise convert to float
+            if value == '' or value is None:
+                profile.savings_goal = None
+            else:
+                try:
+                    profile.savings_goal = float(value) if value else None
+                except (ValueError, TypeError):
+                    profile.savings_goal = None
 
         db.session.commit()
 
