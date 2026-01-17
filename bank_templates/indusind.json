@@ -1,0 +1,28 @@
+{
+  "bank_name": "IndusInd Bank",
+  "identifiers": [
+    "IndusInd Bank",
+    "INDUSIND BANK LTD",
+    "www.indusind.com",
+    "INDUS ONLINE SB",
+    "IndusInd"
+  ],
+  "extraction_method": "hybrid",
+  "column_mappings": {
+    "date": "Date",
+    "description": "Particulars",
+    "reference": "Chq No/Ref No",
+    "debit": "Withdrawal",
+    "credit": "Deposit",
+    "balance": "Balance"
+  },
+  "date_format": "DD MMM YYYY",
+  "skip_rows": [
+    "Brought Forward",
+    "Carried Forward",
+    "carried forward"
+  ],
+  "regex_pattern": "^(?P<date>\\d{1,2}\\s+[A-Za-z]{3}\\s+\\d{4})\\s+(?P<description>.+?)\\s+(?P<ref>[A-Z]\\d+)\\s+(?P<debit>[\\d,]+\\.\\d{2})\\s+(?P<credit>[\\d,]+\\.\\d{2})\\s+(?P<balance>[\\d,]+\\.\\d{2})\\s*$",
+  "page_hint": null,
+  "notes": "IndusInd Bank statement using text-based extraction due to lack of table gridlines. Date format: '29 Dec 2025' (space-separated)"
+}

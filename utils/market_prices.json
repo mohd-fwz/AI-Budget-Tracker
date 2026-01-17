@@ -1,0 +1,212 @@
+{
+  "Bangalore": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 52,
+      "wheat_per_kg": 38,
+      "vegetables_per_kg_avg": 45,
+      "dairy_per_liter": 62,
+      "chicken_per_kg": 210,
+      "mutton_per_kg": 650,
+      "fish_per_kg": 320,
+      "eggs_per_dozen": 72
+    },
+    "transport": {
+      "petrol_per_liter": 102,
+      "diesel_per_liter": 89,
+      "cng_per_kg": 75,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 1200,
+      "auto_per_km": 16
+    }
+  },
+  "Mumbai": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 58,
+      "wheat_per_kg": 42,
+      "vegetables_per_kg_avg": 50,
+      "dairy_per_liter": 68,
+      "chicken_per_kg": 230,
+      "mutton_per_kg": 700,
+      "fish_per_kg": 380,
+      "eggs_per_dozen": 80
+    },
+    "transport": {
+      "petrol_per_liter": 106,
+      "diesel_per_liter": 94,
+      "cng_per_kg": 70,
+      "metro_per_km": 4,
+      "bus_monthly_pass": 1500,
+      "auto_per_km": 18
+    }
+  },
+  "Delhi": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 50,
+      "wheat_per_kg": 35,
+      "vegetables_per_kg_avg": 42,
+      "dairy_per_liter": 60,
+      "chicken_per_kg": 190,
+      "mutton_per_kg": 620,
+      "fish_per_kg": 280,
+      "eggs_per_dozen": 70
+    },
+    "transport": {
+      "petrol_per_liter": 96,
+      "diesel_per_liter": 87,
+      "cng_per_kg": 65,
+      "metro_per_km": 3.5,
+      "bus_monthly_pass": 1000,
+      "auto_per_km": 15
+    }
+  },
+  "Chennai": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 48,
+      "wheat_per_kg": 40,
+      "vegetables_per_kg_avg": 38,
+      "dairy_per_liter": 58,
+      "chicken_per_kg": 180,
+      "mutton_per_kg": 600,
+      "fish_per_kg": 250,
+      "eggs_per_dozen": 65
+    },
+    "transport": {
+      "petrol_per_liter": 100,
+      "diesel_per_liter": 91,
+      "cng_per_kg": 72,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 900,
+      "auto_per_km": 14
+    }
+  },
+  "Kolkata": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 45,
+      "wheat_per_kg": 36,
+      "vegetables_per_kg_avg": 35,
+      "dairy_per_liter": 55,
+      "chicken_per_kg": 170,
+      "mutton_per_kg": 580,
+      "fish_per_kg": 220,
+      "eggs_per_dozen": 60
+    },
+    "transport": {
+      "petrol_per_liter": 104,
+      "diesel_per_liter": 92,
+      "cng_per_kg": 68,
+      "metro_per_km": 2.5,
+      "bus_monthly_pass": 800,
+      "auto_per_km": 13
+    }
+  },
+  "Hyderabad": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 47,
+      "wheat_per_kg": 37,
+      "vegetables_per_kg_avg": 40,
+      "dairy_per_liter": 58,
+      "chicken_per_kg": 185,
+      "mutton_per_kg": 610,
+      "fish_per_kg": 270,
+      "eggs_per_dozen": 68
+    },
+    "transport": {
+      "petrol_per_liter": 108,
+      "diesel_per_liter": 95,
+      "cng_per_kg": 73,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 950,
+      "auto_per_km": 15
+    }
+  },
+  "Pune": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 54,
+      "wheat_per_kg": 39,
+      "vegetables_per_kg_avg": 44,
+      "dairy_per_liter": 64,
+      "chicken_per_kg": 200,
+      "mutton_per_kg": 640,
+      "fish_per_kg": 300,
+      "eggs_per_dozen": 74
+    },
+    "transport": {
+      "petrol_per_liter": 105,
+      "diesel_per_liter": 93,
+      "cng_per_kg": 71,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 1100,
+      "auto_per_km": 16
+    }
+  },
+  "Ahmedabad": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 51,
+      "wheat_per_kg": 36,
+      "vegetables_per_kg_avg": 39,
+      "dairy_per_liter": 57,
+      "chicken_per_kg": 175,
+      "mutton_per_kg": 590,
+      "fish_per_kg": 260,
+      "eggs_per_dozen": 66
+    },
+    "transport": {
+      "petrol_per_liter": 98,
+      "diesel_per_liter": 88,
+      "cng_per_kg": 67,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 850,
+      "auto_per_km": 14
+    }
+  },
+  "Jaipur": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 49,
+      "wheat_per_kg": 34,
+      "vegetables_per_kg_avg": 37,
+      "dairy_per_liter": 56,
+      "chicken_per_kg": 165,
+      "mutton_per_kg": 570,
+      "fish_per_kg": 240,
+      "eggs_per_dozen": 64
+    },
+    "transport": {
+      "petrol_per_liter": 99,
+      "diesel_per_liter": 89,
+      "cng_per_kg": 69,
+      "metro_per_km": 3,
+      "bus_monthly_pass": 800,
+      "auto_per_km": 13
+    }
+  },
+  "Lucknow": {
+    "last_updated": "2024-12-01",
+    "groceries": {
+      "rice_per_kg": 46,
+      "wheat_per_kg": 33,
+      "vegetables_per_kg_avg": 36,
+      "dairy_per_liter": 54,
+      "chicken_per_kg": 160,
+      "mutton_per_kg": 560,
+      "fish_per_kg": 230,
+      "eggs_per_dozen": 62
+    },
+    "transport": {
+      "petrol_per_liter": 97,
+      "diesel_per_liter": 86,
+      "cng_per_kg": 66,
+      "metro_per_km": 2.5,
+      "bus_monthly_pass": 750,
+      "auto_per_km": 12
+    }
+  }
+}

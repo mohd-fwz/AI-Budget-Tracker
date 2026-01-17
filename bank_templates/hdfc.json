@@ -1,0 +1,28 @@
+{
+  "bank_name": "HDFC Bank",
+  "identifiers": [
+    "HDFC Bank",
+    "HDFC BANK LTD",
+    "www.hdfcbank.com"
+  ],
+  "extraction_method": "text_regex",
+  "column_mappings": {
+    "date": "Date",
+    "description": "Narration",
+    "reference": "Chq./Ref.No.",
+    "value_date": "ValueDt",
+    "debit": "WithdrawalAmt.",
+    "credit": "DepositAmt.",
+    "balance": "ClosingBalance"
+  },
+  "date_format": "DD/MM/YY",
+  "skip_rows": [
+    "Brought Forward",
+    "Carried Forward",
+    "Opening Balance",
+    "Closing Balance"
+  ],
+  "regex_pattern": "^(?P<date>\\d{2}/\\d{2}/\\d{2})\\s+(?P<description>.+?)\\s+(?P<ref>\\d+)\\s+\\d{2}/\\d{2}/\\d{2}\\s+(?P<debit>[\\d,]+\\.\\d{2})\\s+(?P<balance>[\\d,]+\\.\\d{2})",
+  "page_hint": null,
+  "notes": "HDFC uses text-based extraction due to table wrapping issues. Transaction data appears on multiple pages."
+}

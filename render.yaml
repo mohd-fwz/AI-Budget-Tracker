@@ -1,0 +1,63 @@
+# Render.com Blueprint Configuration
+# This file defines the infrastructure for deploying Budget API
+
+services:
+  # Web Service - Flask API
+  - type: web
+    name: budget-api
+    env: python
+    region: oregon  # Free tier available region
+    plan: free      # Free tier
+    branch: main    # Deploy from main branch
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 2 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+
+    envVars:
+      # Flask Configuration
+      - key: SECRET_KEY
+        generateValue: true  # Render will auto-generate a secure key
+
+      - key: DEBUG
+        value: False
+
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Database URL (from Supabase)
+      # Add this manually in Render dashboard
+      - key: DATABASE_URL
+        sync: false  # Must be added manually
+
+      # Supabase Configuration
+      # Add these manually from your Supabase project
+      - key: SUPABASE_URL
+        sync: false
+
+      - key: SUPABASE_KEY
+        sync: false
+
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # AI API Configuration
+      # Add this manually from Groq
+      - key: GROQ_API_KEY
+        sync: false
+
+      # CORS Configuration
+      - key: CORS_ORIGINS
+        value: "*"  # Update with your frontend domain in production
+
+    autoDeploy: true  # Auto-deploy on git push
+
+# Alternative: Manual Environment Variables Setup
+# If render.yaml doesn't work, add these in Render Dashboard manually:
+#
+# 1. SECRET_KEY (auto-generate or use: python -c "import secrets; print(secrets.token_hex(32))")
+# 2. DATABASE_URL (from Supabase: Settings -> Database -> Connection String)
+# 3. SUPABASE_URL (from Supabase: Settings -> API -> Project URL)
+# 4. SUPABASE_KEY (from Supabase: Settings -> API -> Project API keys -> anon public)
+# 5. SUPABASE_JWT_SECRET (from Supabase: Settings -> API -> JWT Secret)
+# 6. GROQ_API_KEY (from Groq Console: https://console.groq.com)
+# 7. CORS_ORIGINS (your frontend URL or "*" for development)

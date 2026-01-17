@@ -1,0 +1,27 @@
+{
+  "bank_name": "Kotak Mahindra Bank",
+  "identifiers": [
+    "Kotak Mahindra Bank",
+    "kotak",
+    "www.kotak.com"
+  ],
+  "extraction_method": "table",
+  "column_mappings": {
+    "date": ["Date", "TRANSACTION DATE"],
+    "description": ["Description", "TRANSACTION DETAILS"],
+    "reference": ["Chq./Ref number", "CHQ/REF NO."],
+    "amount_combined": "DEBIT/CREDIT(₹)",
+    "debit": "Amount",
+    "credit": null,
+    "balance": ["Balance", "BALANCE(₹)"],
+    "dr_cr_indicator": "Dr/Cr"
+  },
+  "date_format": ["D/MM/YYYY", "DD Mon YYYY"],
+  "amount_indicator": "Dr/Cr",
+  "skip_rows": [
+    "OPENING BALANCE",
+    "CLOSING BALANCE"
+  ],
+  "page_hint": null,
+  "notes": "Kotak has two formats: old (with Dr/Cr indicator) and new (with signed amount in DEBIT/CREDIT column)."
+}
