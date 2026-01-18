@@ -210,58 +210,98 @@ Respond with ONLY the category name, nothing else. If you're not sure, respond w
             timeout=10
         )
 
-        if response.status_code == 200:
-            result = response.json()
-            content = result['choices'][0]['message']['content'].strip()
-
+        # Handle rate limit errors (HTTP 429)
+        if response.status_code == 429:
+            error_msg = "AI service rate limit reached. Transactions will be marked as 'Other' - you can recategorize them manually."
+            print(f"Groq API rate limit exceeded: {response.text}")
             if return_suggestions:
-                # Parse the structured response
-                lines = content.split('\n')
-                suggestion = {
+                return {
                     'suggested_category': 'Other',
                     'confidence': 'low',
                     'alternatives': [],
-                    'reasoning': 'Unable to categorize',
+                    'reasoning': error_msg,
+                    'needs_clarification': True,
+                    'rate_limited': True
+                }
+            return 'Other'
+
+        # Handle other API errors
+        if response.status_code != 200:
+            error_msg = f"AI service temporarily unavailable"
+            print(f"Groq API error: {response.status_code} - {response.text}")
+            if return_suggestions:
+                return {
+                    'suggested_category': 'Other',
+                    'confidence': 'low',
+                    'alternatives': [],
+                    'reasoning': error_msg,
                     'needs_clarification': True
                 }
+            return 'Other'
 
-                for line in lines:
-                    if line.startswith('CATEGORY:'):
-                        cat = line.replace('CATEGORY:', '').strip()
-                        valid_cats = list(CATEGORY_KEYWORDS.keys()) + ['Other']
-                        if cat in valid_cats:
-                            suggestion['suggested_category'] = cat
-                    elif line.startswith('CONFIDENCE:'):
-                        conf = line.replace('CONFIDENCE:', '').strip().lower()
-                        if conf in ['high', 'medium', 'low']:
-                            suggestion['confidence'] = conf
-                    elif line.startswith('ALTERNATIVES:'):
-                        alts = line.replace('ALTERNATIVES:', '').strip()
-                        suggestion['alternatives'] = [a.strip() for a in alts.split(',') if a.strip()]
-                    elif line.startswith('REASONING:'):
-                        suggestion['reasoning'] = line.replace('REASONING:', '').strip()
+        result = response.json()
+        content = result['choices'][0]['message']['content'].strip()
 
-                # Mark as needing clarification if confidence is not high
-                suggestion['needs_clarification'] = (
-                    suggestion['confidence'] in ['medium', 'low'] or
-                    is_ambiguous_description(description)
-                )
+        if return_suggestions:
+            # Parse the structured response
+            lines = content.split('\n')
+            suggestion = {
+                'suggested_category': 'Other',
+                'confidence': 'low',
+                'alternatives': [],
+                'reasoning': 'Unable to categorize',
+                'needs_clarification': True
+            }
 
-                return suggestion
-            else:
-                # Simple category response
-                category = content.strip()
-                valid_categories = list(CATEGORY_KEYWORDS.keys()) + ['Other']
-                if category in valid_categories:
-                    return category
+            for line in lines:
+                if line.startswith('CATEGORY:'):
+                    cat = line.replace('CATEGORY:', '').strip()
+                    valid_cats = list(CATEGORY_KEYWORDS.keys()) + ['Other']
+                    if cat in valid_cats:
+                        suggestion['suggested_category'] = cat
+                elif line.startswith('CONFIDENCE:'):
+                    conf = line.replace('CONFIDENCE:', '').strip().lower()
+                    if conf in ['high', 'medium', 'low']:
+                        suggestion['confidence'] = conf
+                elif line.startswith('ALTERNATIVES:'):
+                    alts = line.replace('ALTERNATIVES:', '').strip()
+                    suggestion['alternatives'] = [a.strip() for a in alts.split(',') if a.strip()]
+                elif line.startswith('REASONING:'):
+                    suggestion['reasoning'] = line.replace('REASONING:', '').strip()
 
-        # If API call failed or returned invalid category
+            # Mark as needing clarification if confidence is not high
+            suggestion['needs_clarification'] = (
+                suggestion['confidence'] in ['medium', 'low'] or
+                is_ambiguous_description(description)
+            )
+
+            return suggestion
+        else:
+            # Simple category response
+            category = content.strip()
+            valid_categories = list(CATEGORY_KEYWORDS.keys()) + ['Other']
+            if category in valid_categories:
+                return category
+
+        # If returned invalid category
         if return_suggestions:
             return {
                 'suggested_category': 'Other',
                 'confidence': 'low',
                 'alternatives': [],
                 'reasoning': 'Could not categorize automatically',
+                'needs_clarification': True
+            }
+        return 'Other'
+
+    except requests.exceptions.Timeout:
+        print("AI categorization timeout")
+        if return_suggestions:
+            return {
+                'suggested_category': 'Other',
+                'confidence': 'low',
+                'alternatives': [],
+                'reasoning': 'AI service timed out - please try again',
                 'needs_clarification': True
             }
         return 'Other'

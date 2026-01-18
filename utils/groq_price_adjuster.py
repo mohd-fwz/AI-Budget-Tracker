@@ -73,6 +73,11 @@ Example: If estimated price is Rs.105.50, respond with: 105.5"""
             timeout=10
         )
 
+        # Handle rate limit errors (HTTP 429)
+        if response.status_code == 429:
+            print(f"Groq API rate limit exceeded for {item_name}, using simple inflation adjustment")
+            return adjust_price_simple(base_price, base_date)
+
         if response.status_code == 200:
             result = response.json()
             ai_response = result['choices'][0]['message']['content'].strip()
@@ -102,6 +107,10 @@ Example: If estimated price is Rs.105.50, respond with: 105.5"""
         else:
             print(f"GROQ API error for {item_name}: {response.status_code}")
             return base_price
+
+    except requests.exceptions.Timeout:
+        print(f"Groq API timeout for {item_name}, using simple inflation adjustment")
+        return adjust_price_simple(base_price, base_date)
 
     except Exception as e:
         print(f"Price adjustment error for {item_name}: {str(e)}")

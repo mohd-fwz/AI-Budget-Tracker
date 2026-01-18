@@ -209,6 +209,11 @@ Keep each recommendation concise (1-2 sentences) and actionable."""
             timeout=15
         )
 
+        # Handle rate limit errors (HTTP 429)
+        if response.status_code == 429:
+            print("Groq API rate limit exceeded for recommendations, using fallback")
+            return _generate_fallback_recommendations(spending_data)
+
         if response.status_code == 200:
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
@@ -228,7 +233,12 @@ Keep each recommendation concise (1-2 sentences) and actionable."""
 
         else:
             # Fallback recommendations if API fails
+            print(f"Groq API error for recommendations: {response.status_code}")
             return _generate_fallback_recommendations(spending_data)
+
+    except requests.exceptions.Timeout:
+        print("Groq API timeout for recommendations, using fallback")
+        return _generate_fallback_recommendations(spending_data)
 
     except Exception as e:
         print(f"AI recommendation error: {str(e)}")

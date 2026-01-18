@@ -610,7 +610,27 @@ def import_transactions():
         skipped_count = 0
 
         # Import learning utilities
-        from utils.merchant_learning import save_merchant_category
+        from utils.merchant_learning import save_merchant_category, normalize_merchant_name
+
+        # STEP 1: Build a map of normalized merchant names to categories from clarifications
+        # This allows applying the same category to all transactions with the same merchant
+        clarification_merchant_map = {}
+        for idx_str, category in clarifications.items():
+            idx = int(idx_str)
+            if idx < len(transactions):
+                description = transactions[idx].get('description', '')
+                normalized_name = normalize_merchant_name(description)
+                if normalized_name and validate_category(category):
+                    clarification_merchant_map[normalized_name] = category
+                    # Save the learning immediately
+                    try:
+                        save_merchant_category(
+                            user_id=user_id,
+                            description=description,
+                            category=category
+                        )
+                    except Exception as learn_error:
+                        print(f"Warning: Could not save learned mapping: {learn_error}")
 
         for idx, transaction in enumerate(transactions):
             try:
@@ -618,6 +638,8 @@ def import_transactions():
 
                 # Check if user provided clarification for this transaction
                 user_provided_category = False
+
+                # First check by index (direct clarification)
                 if str(idx) in clarifications:
                     category = clarifications[str(idx)]
                     user_provided_category = True
@@ -626,14 +648,22 @@ def import_transactions():
                         category = 'Uncategorized'
                         user_provided_category = False
                 else:
-                    # Parse transaction description for payment details FIRST
-                    parsed_transaction = parse_transaction_description(transaction['description'] or '')
+                    # Check if another transaction with the same merchant was clarified
+                    normalized_name = normalize_merchant_name(transaction.get('description', ''))
+                    if normalized_name and normalized_name in clarification_merchant_map:
+                        category = clarification_merchant_map[normalized_name]
+                        user_provided_category = True  # Treat as user-provided since it came from a clarification
 
+                # Parse transaction description for payment details
+                parsed_transaction = parse_transaction_description(transaction['description'] or '')
+
+                # If no category yet from clarifications, auto-categorize
+                if not user_provided_category:
                     # Auto-categorize - use transaction type for income
                     if transaction_type == 'income':
                         category = 'Income'
                     else:
-                        # NEW: Try merchant-based categorization first (high confidence)
+                        # Try merchant-based categorization first (high confidence)
                         merchant_strategy = get_categorization_strategy(
                             merchant_name=parsed_transaction['merchant_name'],
                             upi_id=parsed_transaction['upi_id'],
@@ -668,19 +698,6 @@ def import_transactions():
 
                 db.session.add(expense)
                 imported_count += 1
-
-                # LEARNING: Save merchant mapping if user provided category
-                # This teaches the system for future imports
-                if user_provided_category:
-                    try:
-                        save_merchant_category(
-                            user_id=user_id,
-                            description=transaction['description'],
-                            category=category
-                        )
-                    except Exception as learn_error:
-                        # Don't fail the import if learning fails
-                        print(f"Warning: Could not save learned mapping: {learn_error}")
 
             except Exception as e:
                 print(f"Error importing transaction {idx}: {str(e)}")

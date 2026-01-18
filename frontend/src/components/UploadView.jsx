@@ -24,7 +24,7 @@ const FILE_TYPES = {
   excel_xls: { icon: FileSpreadsheet, color: 'text-green-500', label: 'Excel (Legacy)' }
 }
 
-export default function UploadView() {
+export default function UploadView({ onUploadComplete }) {
   // Phase tracking
   const [uploadPhase, setUploadPhase] = useState('upload') // 'upload' | 'password' | 'date_range' | 'clarify'
 
@@ -215,6 +215,13 @@ export default function UploadView() {
       setFile(null)
       setUploadPhase('upload')
       document.getElementById('file-input').value = ''
+
+      // Auto-navigate to expenses view after 2 seconds
+      if (onUploadComplete && data.imported > 0) {
+        setTimeout(() => {
+          onUploadComplete()
+        }, 2000)
+      }
     } catch (err) {
       console.error('[Phase 3] Import failed:', err)
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to import transactions'
@@ -345,6 +352,11 @@ export default function UploadView() {
                       <div className="text-xs text-gray-700">Total</div>
                     </div>
                   </div>
+                  {result.imported > 0 && (
+                    <p className="text-sm text-green-600 mt-3 flex items-center gap-2">
+                      <span className="animate-pulse">Redirecting to Expenses view...</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -358,6 +370,7 @@ export default function UploadView() {
         onSubmit={handlePasswordSubmit}
         onCancel={handlePasswordCancel}
         error={passwordError}
+        loading={uploading}
       />
 
       {/* Date Range Picker Modal */}
@@ -367,6 +380,7 @@ export default function UploadView() {
             dateRange={dateRange}
             onSelect={handleDateRangeSelect}
             onCancel={handleDateRangeCancel}
+            loading={uploading}
           />
         </div>
       )}

@@ -17,7 +17,14 @@ const VIEWS = {
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState(VIEWS.EXPENSES)
+  const [refreshKey, setRefreshKey] = useState(0)
   const navigate = useNavigate()
+
+  // Callback when upload is complete - switch to expenses view and refresh
+  const handleUploadComplete = () => {
+    setRefreshKey(prev => prev + 1)  // Force refresh of child components
+    setActiveView(VIEWS.EXPENSES)
+  }
 
   const handleSignOut = () => {
     // Clear tokens from localStorage
@@ -87,10 +94,10 @@ export default function Dashboard() {
 
           {/* Main Content */}
           <main className="flex-1">
-            {activeView === VIEWS.EXPENSES && <ExpensesView />}
-            {activeView === VIEWS.ANALYTICS && <AnalyticsView />}
-            {activeView === VIEWS.UPLOAD && <UploadView />}
-            {activeView === VIEWS.BUDGET && <BudgetPlanner />}
+            {activeView === VIEWS.EXPENSES && <ExpensesView key={`expenses-${refreshKey}`} />}
+            {activeView === VIEWS.ANALYTICS && <AnalyticsView key={`analytics-${refreshKey}`} />}
+            {activeView === VIEWS.UPLOAD && <UploadView onUploadComplete={handleUploadComplete} />}
+            {activeView === VIEWS.BUDGET && <BudgetPlanner key={`budget-${refreshKey}`} />}
             {activeView === VIEWS.PROFILE && <ProfilePage />}
           </main>
         </div>

@@ -30,6 +30,18 @@ INDIAN_MERCHANT_DATABASE = {
     'irctc': {'category': 'Transport', 'confidence': 0.95, 'type': 'Rail Travel'},
     'makemytrip': {'category': 'Transport', 'confidence': 0.90, 'type': 'Travel Booking'},
     'goibibo': {'category': 'Transport', 'confidence': 0.90, 'type': 'Travel Booking'},
+    # Petrol Pumps
+    'petrolpump': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'petrol': {'category': 'Transport', 'confidence': 0.90, 'type': 'Fuel'},
+    'iocl': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'bpcl': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'hpcl': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'indianoil': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'bharatpetroleum': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'hindustanpetroleum': {'category': 'Transport', 'confidence': 0.95, 'type': 'Fuel'},
+    'reliance': {'category': 'Transport', 'confidence': 0.85, 'type': 'Fuel'},
+    'fastag': {'category': 'Transport', 'confidence': 0.95, 'type': 'Toll'},
+    'paytmfastag': {'category': 'Transport', 'confidence': 0.95, 'type': 'Toll'},
 
     # Entertainment
     'bookmyshow': {'category': 'Entertainment', 'confidence': 0.95, 'type': 'Movies/Events'},
@@ -174,8 +186,12 @@ def categorize_by_keywords(description: str) -> Tuple[Optional[str], float, str]
         ],
         'Transport': [
             ('fuel', 0.90), ('petrol', 0.90), ('diesel', 0.90),
+            ('petrolpump', 0.95), ('petrol pump', 0.95), ('filling station', 0.95),
+            ('hp petrol', 0.95), ('iocl', 0.95), ('bpcl', 0.95), ('indian oil', 0.95),
+            ('hindustan petroleum', 0.95), ('bharat petroleum', 0.95),
             ('cab', 0.85), ('taxi', 0.85), ('bus', 0.85),
-            ('metro', 0.90), ('train', 0.90), ('flight', 0.85)
+            ('metro', 0.90), ('train', 0.90), ('flight', 0.85),
+            ('parking', 0.85), ('toll', 0.90), ('fastag', 0.95)
         ],
         'Bills': [
             ('electricity', 0.95), ('water', 0.95), ('gas', 0.95),
