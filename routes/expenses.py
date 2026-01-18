@@ -452,7 +452,11 @@ def select_date_range():
         clear_items = []
 
         # Import learning utilities
-        from utils.merchant_learning import get_learned_category
+        from utils.merchant_learning import get_learned_category, normalize_merchant_name
+
+        # Track which merchants we've already seen for grouping
+        seen_merchants = {}  # normalized_name -> first occurrence info
+        merchant_transaction_indices = {}  # normalized_name -> list of indices
 
         for idx, transaction in enumerate(filtered_transactions):
             description = transaction['description']
@@ -466,6 +470,9 @@ def select_date_range():
                     'category': 'Income'
                 })
                 continue
+
+            # Normalize merchant name for grouping
+            normalized_name = normalize_merchant_name(description)
 
             # PRIORITY 1: Check if we've learned this merchant before
             learned = get_learned_category(user_id, description)
@@ -482,37 +489,55 @@ def select_date_range():
 
                 # Check if needs clarification
                 if suggestion['needs_clarification']:
-                    # Check if we have a low-confidence learned mapping
-                    if learned['found']:
-                        # Use learned category as suggestion
-                        ambiguous_items.append({
-                            'index': idx,
-                            'description': description,
-                            'amount': amount,
-                            'date': transaction['date'].isoformat(),
-                            'suggested_category': learned['category'],
-                            'confidence': 'medium',  # Learned but low confidence
-                            'alternatives': [suggestion['suggested_category']],
-                            'reasoning': f"Previously categorized as {learned['category']} (learning from past)"
-                        })
-                    else:
-                        # No learned mapping - use AI suggestion
-                        ambiguous_items.append({
-                            'index': idx,
-                            'description': description,
-                            'amount': amount,
-                            'date': transaction['date'].isoformat(),
-                            'suggested_category': suggestion['suggested_category'],
-                            'confidence': suggestion['confidence'],
-                            'alternatives': suggestion['alternatives'],
-                            'reasoning': suggestion['reasoning']
-                        })
+                    # Track transaction index for this merchant
+                    if normalized_name not in merchant_transaction_indices:
+                        merchant_transaction_indices[normalized_name] = []
+                    merchant_transaction_indices[normalized_name].append(idx)
+
+                    # Only add to ambiguous_items if we haven't seen this merchant before
+                    if normalized_name not in seen_merchants:
+                        # Check if we have a low-confidence learned mapping
+                        if learned['found']:
+                            # Use learned category as suggestion
+                            seen_merchants[normalized_name] = {
+                                'index': idx,
+                                'description': description,
+                                'amount': amount,
+                                'date': transaction['date'].isoformat(),
+                                'suggested_category': learned['category'],
+                                'confidence': 'medium',  # Learned but low confidence
+                                'alternatives': [suggestion['suggested_category']],
+                                'reasoning': f"Previously categorized as {learned['category']} (learning from past)",
+                                'normalized_merchant': normalized_name
+                            }
+                        else:
+                            # No learned mapping - use AI suggestion
+                            seen_merchants[normalized_name] = {
+                                'index': idx,
+                                'description': description,
+                                'amount': amount,
+                                'date': transaction['date'].isoformat(),
+                                'suggested_category': suggestion['suggested_category'],
+                                'confidence': suggestion['confidence'],
+                                'alternatives': suggestion['alternatives'],
+                                'reasoning': suggestion['reasoning'],
+                                'normalized_merchant': normalized_name
+                            }
                 else:
                     # Auto-categorize clear transactions
                     clear_items.append({
                         'transaction': transaction,
                         'category': suggestion['suggested_category']
                     })
+
+        # Build final ambiguous_items list with transaction counts
+        for normalized_name, item_info in seen_merchants.items():
+            transaction_count = len(merchant_transaction_indices.get(normalized_name, [1]))
+            item_info['transaction_count'] = transaction_count
+            item_info['all_indices'] = merchant_transaction_indices.get(normalized_name, [item_info['index']])
+            if transaction_count > 1:
+                item_info['reasoning'] = f"{item_info['reasoning']} ({transaction_count} similar transactions)"
+            ambiguous_items.append(item_info)
 
         # Update session with filtered transactions and analysis
         session_data['filtered_transactions'] = filtered_transactions

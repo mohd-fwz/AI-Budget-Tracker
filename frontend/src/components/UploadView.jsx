@@ -422,7 +422,14 @@ export default function UploadView({ onUploadComplete }) {
                   <div key={item.index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{item.description}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-900">{item.description}</h4>
+                          {item.transaction_count > 1 && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                              {item.transaction_count} transactions
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600 mt-1">
                           ₹{item.amount.toFixed(2)} • {new Date(item.date).toLocaleDateString()}
                         </p>
@@ -470,7 +477,12 @@ export default function UploadView({ onUploadComplete }) {
             <div className="border-t border-gray-200 p-6 bg-gray-50">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                  {ambiguousItems.length} transaction(s) to categorize
+                  {ambiguousItems.length} unique merchant(s) to categorize
+                  {ambiguousItems.some(item => item.transaction_count > 1) && (
+                    <span className="text-gray-500 ml-1">
+                      ({ambiguousItems.reduce((sum, item) => sum + (item.transaction_count || 1), 0)} total transactions)
+                    </span>
+                  )}
                 </p>
                 <div className="flex gap-3">
                   <button
