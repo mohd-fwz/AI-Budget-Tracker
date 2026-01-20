@@ -21,14 +21,21 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
-    # Database Configuration - SQLite (local file-based database)
+    # Database Configuration
+    # Supports PostgreSQL (production on Render) and SQLite (local development)
     DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///budget.db')
+
+    # Fix for Render: they provide 'postgres://' but SQLAlchemy requires 'postgresql://'
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    # SQLite doesn't need connection pooling like PostgreSQL
+
+    # Connection pool settings
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
+        'pool_recycle': 300,  # Recycle connections every 5 minutes
     }
 
     # AI API Configuration (Groq)

@@ -3,8 +3,9 @@ Flask==3.0.0
 Flask-CORS==4.0.0
 Flask-SQLAlchemy==3.1.1
 
-# Database (SQLite - no extra dependencies needed)
+# Database
 SQLAlchemy==2.0.36
+psycopg2-binary==2.9.9  # PostgreSQL adapter for production (Render)
 
 # Data Processing (for CSV parsing)
 python-dateutil==2.8.2
