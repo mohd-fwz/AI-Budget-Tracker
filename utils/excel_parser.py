@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from .exceptions import InvalidFileFormatError, ColumnDetectionError
 from .csv_parser import _parse_date, _parse_amount, _find_column, _calculate_net_amount
+from .income_detector import is_income_by_description
 
 
 def _detect_header_row_xlsx(sheet, max_search_rows: int = 20) -> Tuple[int, List[str]]:
@@ -191,6 +192,10 @@ def parse_xlsx(file_content: bytes) -> List[Dict]:
                     else:
                         transaction_type = 'expense'
 
+                # FALLBACK: Check description for income indicators
+                if transaction_type == 'expense' and is_income_by_description(description):
+                    transaction_type = 'income'
+
                 transactions.append({
                     'date': date,
                     'description': description,
@@ -355,6 +360,10 @@ def parse_xls(file_content: bytes) -> List[Dict]:
                         transaction_type = 'income'
                     else:
                         transaction_type = 'expense'
+
+                # FALLBACK: Check description for income indicators
+                if transaction_type == 'expense' and is_income_by_description(description):
+                    transaction_type = 'income'
 
                 transactions.append({
                     'date': date,

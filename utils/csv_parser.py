@@ -7,6 +7,7 @@ import csv
 from datetime import datetime
 from io import StringIO
 import re
+from utils.income_detector import is_income_by_description
 
 
 def parse_csv_file(file_content):
@@ -121,6 +122,11 @@ def parse_csv_file(file_content):
                         transaction_type = 'income'
                     else:
                         transaction_type = 'expense'
+
+                # FALLBACK: Check description for income indicators
+                # This catches cases where column-based detection fails
+                if transaction_type == 'expense' and is_income_by_description(description):
+                    transaction_type = 'income'
 
                 transactions.append({
                     'date': date,

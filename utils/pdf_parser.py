@@ -9,6 +9,7 @@ import pikepdf
 from typing import List, Dict, Optional, Tuple
 from .exceptions import PDFPasswordError, InvalidFileFormatError, ColumnDetectionError
 from .csv_parser import _parse_date, _parse_amount, _find_column, _calculate_net_amount
+from .income_detector import is_income_by_description
 
 
 def is_pdf_encrypted(file_content: bytes) -> bool:
@@ -531,6 +532,11 @@ def parse_pdf_transactions(
                     transaction_type = 'income'
                 else:
                     transaction_type = 'expense'
+
+            # FALLBACK: Check description for income indicators
+            # This catches cases where column-based detection fails
+            if transaction_type == 'expense' and is_income_by_description(description):
+                transaction_type = 'income'
 
             transactions.append({
                 'date': date,
