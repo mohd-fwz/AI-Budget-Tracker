@@ -15,6 +15,7 @@ from utils.exceptions import PDFPasswordError, InvalidFileFormatError, Unsupport
 from utils.auth_helpers import require_auth
 from utils.transaction_parser import parse_transaction_description
 from utils.merchant_categorizer import get_categorization_strategy
+from utils.merchant_learning import get_learned_category
 import json
 
 # Create Blueprint for expense routes
