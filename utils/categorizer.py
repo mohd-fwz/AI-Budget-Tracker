@@ -11,43 +11,61 @@ from utils.merchant_learning import get_learned_category
 
 # Keyword patterns for automatic categorization
 # Each category has a list of keywords that indicate that category
+# Priority order matters - checked in this sequence
 CATEGORY_KEYWORDS = {
-    'Groceries': [
-        'supermarket', 'grocery', 'walmart', 'target', 'costco', 'whole foods',
-        'trader joe', 'safeway', 'kroger', 'publix', 'food', 'market',
-        'aldi', 'lidl', 'tesco', 'carrefour', 'fresh', 'produce'
+    'Transport': [
+        'uber', 'lyft', 'taxi', 'cab', 'gas', 'fuel', 'petrol', 'shell',
+        'chevron', 'bp', 'exxon', 'transit', 'metro', 'bus', 'train',
+        'subway', 'parking', 'toll', 'car', 'vehicle', 'auto',
+        'transportation', 'citymapper', 'parking meter',
+        # Indian transport
+        'ola', 'rapido', 'railway', 'irctc', 'railway ticket', 'flight', 'airline',
+        'makemytrip', 'goibibo'
     ],
     'Entertainment': [
         'netflix', 'spotify', 'hulu', 'disney', 'hbo', 'amazon prime',
         'movie', 'cinema', 'theater', 'theatre', 'concert', 'game',
         'xbox', 'playstation', 'nintendo', 'steam', 'ticket', 'show',
-        'entertainment', 'music', 'streaming', 'youtube premium'
-    ],
-    'Rent': [
-        'rent', 'lease', 'landlord', 'property', 'housing', 'apartment',
-        'mortgage', 'housing payment', 'monthly rent'
-    ],
-    'Transport': [
-        'uber', 'lyft', 'taxi', 'cab', 'gas', 'fuel', 'petrol', 'shell',
-        'chevron', 'bp', 'exxon', 'transit', 'metro', 'bus', 'train',
-        'subway', 'parking', 'toll', 'car', 'vehicle', 'auto',
-        'transportation', 'citymapper', 'parking meter'
-    ],
-    'Bills': [
-        'electric', 'electricity', 'water', 'utility', 'utilities', 'gas bill',
-        'internet', 'wifi', 'phone', 'mobile', 'verizon', 'att', 't-mobile',
-        'comcast', 'spectrum', 'insurance', 'bill payment', 'utilities payment'
+        'entertainment', 'music', 'streaming', 'youtube premium',
+        # Indian merchants & food delivery
+        'dominos', 'pizza', 'swiggy', 'zomato', 'foodpanda', 'uber eats',
+        'cafe', 'restaurant', 'dining', 'bar', 'pub', 'club', 'multiplex',
+        'bookmyshow', 'ticketmaster'
     ],
     'Shopping': [
         'amazon', 'ebay', 'shop', 'store', 'mall', 'clothing', 'clothes',
         'fashion', 'shoes', 'electronics', 'best buy', 'apple store',
         'h&m', 'zara', 'uniqlo', 'nike', 'adidas', 'online shopping',
-        'department store', 'retail'
+        'department store', 'retail', 'book', 'apparel',
+        # Indian shopping merchants
+        'myntra', 'flipkart', 'ajio', 'unacademy', 'decathlon', 'sports',
+        'westside', 'reliance', 'pantaloons', 'forever 21', 'levi', 'puma'
+    ],
+    'Groceries': [
+        'supermarket', 'grocery', 'walmart', 'target', 'costco', 'whole foods',
+        'trader joe', 'safeway', 'kroger', 'publix', 'food', 'market',
+        'aldi', 'lidl', 'tesco', 'carrefour', 'fresh', 'produce',
+        # Indian merchants
+        'dmart', 'bigbasket', 'blinkit', 'zepto', 'nature basket', 'grofers',
+        'haldiram', 'chitale', 'britannia', 'dairy', 'milk', 'bakery'
+    ],
+    'Bills': [
+        'electric', 'electricity', 'water', 'utility', 'utilities', 'gas bill',
+        'internet', 'wifi', 'phone', 'mobile', 'verizon', 'att', 't-mobile',
+        'comcast', 'spectrum', 'insurance', 'bill payment', 'utilities payment',
+        # Indian utilities
+        'jio', 'airtel', 'vodafone', 'idea', 'bsnl', 'postpaid', 'broadband'
     ],
     'Healthcare': [
         'doctor', 'hospital', 'clinic', 'pharmacy', 'cvs', 'walgreens',
         'medicine', 'medical', 'health', 'dental', 'dentist', 'prescription',
-        'urgent care', 'healthcare', 'copay', 'medication', 'drug store'
+        'urgent care', 'healthcare', 'copay', 'medication', 'drug store',
+        # Indian healthcare
+        'apollo', 'fortis', 'manipal', 'max', 'pharmeasy', 'netmeds', 'cure fit'
+    ],
+    'Rent': [
+        'rent', 'lease', 'landlord', 'property', 'housing', 'apartment',
+        'mortgage', 'housing payment', 'monthly rent'
     ]
 }
 
@@ -76,11 +94,20 @@ def categorize_by_keywords(description):
     # Check each category's keywords
     for category, keywords in CATEGORY_KEYWORDS.items():
         for keyword in keywords:
-            # Use word boundaries to avoid partial matches
-            # e.g., "car" shouldn't match "card"
-            pattern = r'\b' + re.escape(keyword) + r'\b'
-            if re.search(pattern, description_lower):
-                return category
+            # For multi-word keywords, check as substring first
+            if ' ' in keyword:
+                if keyword in description_lower:
+                    return category
+            else:
+                # For single-word keywords, use word boundaries
+                # Also try partial match for common merchant names
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, description_lower):
+                    return category
+                # Fallback: check if keyword appears in description at all
+                # This helps with merchant names like "myntra", "dominos", etc.
+                if keyword in description_lower:
+                    return category
 
     return None
 
