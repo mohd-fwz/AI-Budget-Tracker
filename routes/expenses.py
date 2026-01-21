@@ -508,34 +508,22 @@ def select_date_range():
                     })
                     continue
 
-                # PRIORITY 3: Get AI suggestion with confidence (only if no keyword match)
-                suggestion = categorize_with_ai(description, amount, return_suggestions=True)
+                # PRIORITY 3: Only call AI if description is ambiguous (save tokens!)
+                # Skip AI for non-ambiguous descriptions
+                if is_ambiguous_description(description):
+                    # Only AI for truly unclear items
+                    suggestion = categorize_with_ai(description, amount, return_suggestions=True)
 
-                # Check if needs clarification
-                if suggestion['needs_clarification']:
-                    # Track transaction index for this merchant
-                    if normalized_name not in merchant_transaction_indices:
-                        merchant_transaction_indices[normalized_name] = []
-                    merchant_transaction_indices[normalized_name].append(idx)
+                    # Check if needs clarification
+                    if suggestion['needs_clarification']:
+                        # Track transaction index for this merchant
+                        if normalized_name not in merchant_transaction_indices:
+                            merchant_transaction_indices[normalized_name] = []
+                        merchant_transaction_indices[normalized_name].append(idx)
 
-                    # Only add to ambiguous_items if we haven't seen this merchant before
-                    if normalized_name not in seen_merchants:
-                        # Check if we have a low-confidence learned mapping
-                        if learned['found']:
-                            # Use learned category as suggestion
-                            seen_merchants[normalized_name] = {
-                                'index': idx,
-                                'description': description,
-                                'amount': amount,
-                                'date': transaction['date'].isoformat(),
-                                'suggested_category': learned['category'],
-                                'confidence': 'medium',  # Learned but low confidence
-                                'alternatives': [suggestion['suggested_category']],
-                                'reasoning': f"Previously categorized as {learned['category']} (learning from past)",
-                                'normalized_merchant': normalized_name
-                            }
-                        else:
-                            # No learned mapping - use AI suggestion
+                        # Only add to ambiguous_items if we haven't seen this merchant before
+                        if normalized_name not in seen_merchants:
+                            # Use AI suggestion
                             seen_merchants[normalized_name] = {
                                 'index': idx,
                                 'description': description,
@@ -547,11 +535,18 @@ def select_date_range():
                                 'reasoning': suggestion['reasoning'],
                                 'normalized_merchant': normalized_name
                             }
+                    else:
+                        # AI categorized it clearly
+                        clear_items.append({
+                            'transaction': transaction,
+                            'category': suggestion['suggested_category']
+                        })
                 else:
-                    # Auto-categorize clear transactions
+                    # Not ambiguous but no keyword match - use fallback
+                    # This is rare but happens for unique merchant names that aren't in keywords
                     clear_items.append({
                         'transaction': transaction,
-                        'category': suggestion['suggested_category']
+                        'category': 'Other'
                     })
 
         # Build final ambiguous_items list with transaction counts
@@ -717,19 +712,9 @@ def import_transactions():
                         if keyword_category:
                             category = keyword_category
                         else:
-                            # PRIORITY 2: Try merchant-based categorization
-                            merchant_strategy = get_categorization_strategy(
-                                merchant_name=parsed_transaction['merchant_name'],
-                                upi_id=parsed_transaction['upi_id'],
-                                user_id=user_id,
-                                description=transaction['description']
-                            )
-
-                            if merchant_strategy['confidence'] >= 0.80:
-                                # High confidence - use merchant categorization
-                                category = merchant_strategy['suggested_category']
-                            else:
-                                # PRIORITY 3: Fallback to AI (may be rate limited)
+                            # PRIORITY 2: Check if description is ambiguous (skip AI for clear descriptions)
+                            if is_ambiguous_description(transaction['description']):
+                                # Only call AI for truly ambiguous descriptions (save tokens!)
                                 try:
                                     suggestion = categorize_with_ai(
                                         transaction['description'],
@@ -740,6 +725,20 @@ def import_transactions():
                                 except Exception as ai_error:
                                     # AI failed (likely rate limited) - use default
                                     print(f"Warning: AI categorization failed for '{transaction['description']}': {ai_error}")
+                                    category = 'Other'
+                            else:
+                                # Not ambiguous and no keyword match - rare case
+                                # Try merchant-based categorization as fallback
+                                merchant_strategy = get_categorization_strategy(
+                                    merchant_name=parsed_transaction['merchant_name'],
+                                    upi_id=parsed_transaction['upi_id'],
+                                    user_id=user_id,
+                                    description=transaction['description']
+                                )
+
+                                if merchant_strategy['confidence'] >= 0.80:
+                                    category = merchant_strategy['suggested_category']
+                                else:
                                     category = 'Other'
 
                 # Create expense record with parsed transaction data
