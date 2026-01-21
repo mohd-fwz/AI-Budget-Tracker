@@ -74,6 +74,9 @@ def generate_budget_recommendations():
         # Get historical spending by category (last 6 months)
         historical = get_historical_spending_by_category(user_id, months_back=6)
 
+        # ===== NEW: Get LAST MONTH's actual spending for overspending analysis =====
+        last_month_spending = get_last_month_spending_by_category(user_id)
+
         # Parse category preferences
         preferences = json.loads(profile.category_preferences or '{}')
 
@@ -86,8 +89,26 @@ def generate_budget_recommendations():
             'Shopping', 'Bills', 'Healthcare', 'Education', 'Other'
         ]
 
+        # ===== NEW: Recommended spending limits based on income =====
+        # Standard budget allocation percentages (based on 50/30/20 rule adapted for India)
+        monthly_income = float(profile.monthly_income) if profile.monthly_income else predicted_income
+        savings_goal = float(profile.savings_goal or 0)
+        available_budget = monthly_income - savings_goal
+
+        RECOMMENDED_PERCENTAGES = {
+            'Groceries': 15,      # 15% of available budget
+            'Transport': 10,     # 10%
+            'Entertainment': 10, # 10%
+            'Shopping': 10,      # 10%
+            'Bills': 25,         # 25% (includes rent, utilities)
+            'Healthcare': 5,     # 5%
+            'Education': 5,      # 5%
+            'Other': 10          # 10%
+        }
+
         # Generate recommendations for each category
         recommendations = []
+        overspending_alerts = []
 
         for category in EXPENSE_CATEGORIES:
             category_prefs = preferences.get(category, {})
@@ -133,10 +154,48 @@ def generate_budget_recommendations():
 
             rec['category'] = category
             rec['is_ai_suggested'] = True
+
+            # ===== NEW: Add overspending analysis for each category =====
+            recommended_limit = (available_budget * RECOMMENDED_PERCENTAGES.get(category, 10)) / 100
+            actual_last_month = last_month_spending.get(category, 0)
+
+            rec['recommended_limit'] = round(recommended_limit, 2)
+            rec['actual_last_month'] = round(actual_last_month, 2)
+
+            # Check for overspending
+            if actual_last_month > 0:
+                if actual_last_month > recommended_limit:
+                    overspend_amount = actual_last_month - recommended_limit
+                    overspend_percent = ((actual_last_month - recommended_limit) / recommended_limit * 100) if recommended_limit > 0 else 100
+                    rec['overspending'] = {
+                        'is_overspent': True,
+                        'amount': round(overspend_amount, 2),
+                        'percent': round(overspend_percent, 1),
+                        'message': f"⚠️ You spent ₹{actual_last_month:,.0f} last month, which is ₹{overspend_amount:,.0f} ({overspend_percent:.0f}%) over the recommended limit of ₹{recommended_limit:,.0f}"
+                    }
+                    overspending_alerts.append({
+                        'category': category,
+                        'actual': actual_last_month,
+                        'recommended': recommended_limit,
+                        'overspend_amount': overspend_amount,
+                        'overspend_percent': overspend_percent
+                    })
+                else:
+                    rec['overspending'] = {
+                        'is_overspent': False,
+                        'message': f"✓ You spent ₹{actual_last_month:,.0f} last month, within the recommended limit of ₹{recommended_limit:,.0f}"
+                    }
+            else:
+                rec['overspending'] = {
+                    'is_overspent': False,
+                    'message': f"No spending recorded last month. Recommended limit: ₹{recommended_limit:,.0f}"
+                }
+
             recommendations.append(rec)
 
         # Calculate totals
         total_budget = sum(r['suggested_amount'] for r in recommendations)
+        total_last_month_spending = sum(last_month_spending.values())
 
         # ===== NEW: Income-aware budget adjustment =====
         # If predicted income is less than suggested budget, adjust recommendations proportionally
@@ -235,6 +294,16 @@ def generate_budget_recommendations():
             'budget_warning': budget_warning,
             'budget_adjusted': budget_adjustment_factor < 1.0,
 
+            # ===== NEW: Overspending Analysis =====
+            'overspending_analysis': {
+                'last_month_total': round(total_last_month_spending, 2),
+                'available_budget': round(available_budget, 2),
+                'is_over_budget': total_last_month_spending > available_budget,
+                'overspend_total': round(total_last_month_spending - available_budget, 2) if total_last_month_spending > available_budget else 0,
+                'alerts': overspending_alerts,
+                'categories_overspent': len(overspending_alerts)
+            },
+
             # Other metadata
             'location': {'city': city, 'state': profile.state} if profile.state else None,
             'analysis_period': 6,
@@ -304,6 +373,38 @@ def get_historical_spending_by_category(user_id: str, months_back: int = 6) -> d
         category_averages[category] = total / months if months > 0 else 0
 
     return category_averages
+
+
+def get_last_month_spending_by_category(user_id: str) -> dict:
+    """
+    Get actual spending by category for the LAST MONTH only
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        Dict mapping category to last month's total spending
+    """
+    # Calculate last month's date range
+    today = datetime.now()
+
+    # Go to first day of current month, then subtract 1 day to get last month
+    first_of_current = today.replace(day=1)
+    last_of_previous = first_of_current - timedelta(days=1)
+    first_of_previous = last_of_previous.replace(day=1)
+
+    # Get spending grouped by category for last month
+    results = db.session.query(
+        Expense.category,
+        func.sum(Expense.amount).label('total')
+    ).filter(
+        Expense.user_id == user_id,
+        Expense.date >= first_of_previous,
+        Expense.date <= last_of_previous,
+        Expense.category != 'Income'
+    ).group_by(Expense.category).all()
+
+    return {row.category: float(row.total or 0) for row in results}
 
 
 @budgets_bp.route('/api/budgets/<month>', methods=['GET'])

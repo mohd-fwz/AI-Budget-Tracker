@@ -275,6 +275,88 @@ export default function BudgetPlanner() {
             </div>
           )}
 
+          {/* ===== NEW: Overspending Analysis Section ===== */}
+          {recommendations.overspending_analysis && recommendations.overspending_analysis.last_month_total > 0 && (
+            <div className={`rounded-xl p-6 border-2 ${
+              recommendations.overspending_analysis.is_over_budget
+                ? 'bg-red-50 border-red-300'
+                : 'bg-green-50 border-green-300'
+            }`}>
+              <div className="flex items-start gap-3 mb-4">
+                <AlertCircle className={`w-6 h-6 flex-shrink-0 ${
+                  recommendations.overspending_analysis.is_over_budget ? 'text-red-600' : 'text-green-600'
+                }`} />
+                <div className="flex-1">
+                  <h3 className={`text-lg font-bold mb-2 ${
+                    recommendations.overspending_analysis.is_over_budget ? 'text-red-800' : 'text-green-800'
+                  }`}>
+                    {recommendations.overspending_analysis.is_over_budget
+                      ? '⚠️ Last Month: Over Budget!'
+                      : '✓ Last Month: Within Budget'}
+                  </h3>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-white/60 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">Last Month Spent</p>
+                      <p className={`text-xl font-bold ${
+                        recommendations.overspending_analysis.is_over_budget ? 'text-red-700' : 'text-gray-800'
+                      }`}>
+                        ₹{recommendations.overspending_analysis.last_month_total.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-white/60 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">Available Budget</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        ₹{recommendations.overspending_analysis.available_budget.toLocaleString()}
+                      </p>
+                    </div>
+                    {recommendations.overspending_analysis.is_over_budget && (
+                      <div className="bg-white/60 rounded-lg p-3">
+                        <p className="text-xs text-gray-600">Over By</p>
+                        <p className="text-xl font-bold text-red-700">
+                          ₹{recommendations.overspending_analysis.overspend_total.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    <div className="bg-white/60 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">Categories Overspent</p>
+                      <p className={`text-xl font-bold ${
+                        recommendations.overspending_analysis.categories_overspent > 0 ? 'text-red-700' : 'text-green-700'
+                      }`}>
+                        {recommendations.overspending_analysis.categories_overspent}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Overspending Alerts by Category */}
+                  {recommendations.overspending_analysis.alerts && recommendations.overspending_analysis.alerts.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-red-800">Categories exceeding recommended limits:</p>
+                      {recommendations.overspending_analysis.alerts.map((alert, idx) => (
+                        <div key={idx} className="bg-white/80 rounded-lg p-3 border border-red-200">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-gray-800">{alert.category}</span>
+                            <span className="text-red-600 font-bold">+{alert.overspend_percent.toFixed(0)}% over</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-600 mt-1">
+                            <span>Spent: ₹{alert.actual.toLocaleString()}</span>
+                            <span>Limit: ₹{alert.recommended.toLocaleString()}</span>
+                          </div>
+                          <div className="mt-2 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-red-500 h-2 rounded-full"
+                              style={{ width: `${Math.min((alert.actual / alert.recommended) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Summary Card */}
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-sm p-6 border-2 border-purple-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -413,6 +495,37 @@ export default function BudgetPlanner() {
                       )}
                     </div>
                   </div>
+
+                  {/* ===== NEW: Overspending indicator per category ===== */}
+                  {rec.overspending && (
+                    <div className={`mt-3 p-3 rounded-lg border ${
+                      rec.overspending.is_overspent
+                        ? 'bg-red-50 border-red-300'
+                        : 'bg-green-50 border-green-300'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <p className={`text-sm font-medium ${
+                          rec.overspending.is_overspent ? 'text-red-800' : 'text-green-800'
+                        }`}>
+                          {rec.overspending.message}
+                        </p>
+                      </div>
+                      {rec.overspending.is_overspent && rec.actual_last_month > 0 && (
+                        <div className="mt-2">
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Last Month: ₹{rec.actual_last_month.toLocaleString()}</span>
+                            <span>Limit: ₹{rec.recommended_limit.toLocaleString()}</span>
+                          </div>
+                          <div className="bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-red-500 h-2 rounded-full transition-all"
+                              style={{ width: `${Math.min((rec.actual_last_month / rec.recommended_limit) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Comparison with historical */}
                   {rec.comparison_with_actual && (
