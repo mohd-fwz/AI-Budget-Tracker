@@ -32,6 +32,14 @@ CATEGORY_KEYWORDS = {
         'cafe', 'restaurant', 'dining', 'bar', 'pub', 'club', 'multiplex',
         'bookmyshow', 'ticketmaster'
     ],
+    'Groceries': [
+        'supermarket', 'grocery', 'walmart', 'target', 'costco', 'whole foods',
+        'trader joe', 'safeway', 'kroger', 'publix', 'food', 'market',
+        'aldi', 'lidl', 'tesco', 'carrefour', 'fresh', 'produce',
+        # Indian merchants - check before Shopping since Reliance can be both
+        'dmart', 'bigbasket', 'blinkit', 'zepto', 'nature basket', 'grofers',
+        'haldiram', 'chitale', 'britannia', 'dairy', 'milk', 'bakery', 'reliance fresh'
+    ],
     'Shopping': [
         'amazon', 'ebay', 'shop', 'store', 'mall', 'clothing', 'clothes',
         'fashion', 'shoes', 'electronics', 'best buy', 'apple store',
@@ -40,14 +48,6 @@ CATEGORY_KEYWORDS = {
         # Indian shopping merchants
         'myntra', 'flipkart', 'ajio', 'unacademy', 'decathlon', 'sports',
         'westside', 'reliance', 'pantaloons', 'forever 21', 'levi', 'puma'
-    ],
-    'Groceries': [
-        'supermarket', 'grocery', 'walmart', 'target', 'costco', 'whole foods',
-        'trader joe', 'safeway', 'kroger', 'publix', 'food', 'market',
-        'aldi', 'lidl', 'tesco', 'carrefour', 'fresh', 'produce',
-        # Indian merchants
-        'dmart', 'bigbasket', 'blinkit', 'zepto', 'nature basket', 'grofers',
-        'haldiram', 'chitale', 'britannia', 'dairy', 'milk', 'bakery'
     ],
     'Bills': [
         'electric', 'electricity', 'water', 'utility', 'utilities', 'gas bill',
@@ -251,21 +251,23 @@ Respond with ONLY the category name, nothing else. If you're not sure, respond w
         # Handle rate limit errors (HTTP 429)
         if response.status_code == 429:
             error_msg = "AI service rate limit reached. Transactions will be marked as 'Other' - you can recategorize them manually."
-            print(f"Groq API rate limit exceeded: {response.text}")
+            error_detail = response.json().get('error', {}).get('message', 'Rate limit exceeded')
+            print(f"Groq API rate limit exceeded: {error_detail}")
             if return_suggestions:
                 return {
                     'suggested_category': 'Other',
                     'confidence': 'low',
                     'alternatives': [],
                     'reasoning': error_msg,
-                    'needs_clarification': True,
+                    'needs_clarification': False,
                     'rate_limited': True
                 }
-            return 'Other'
+            # Raise exception to trigger fallback in calling code
+            raise Exception(f"Rate limited: {error_msg}")
 
         # Handle other API errors
         if response.status_code != 200:
-            error_msg = f"AI service temporarily unavailable"
+            error_msg = f"AI service error (HTTP {response.status_code})"
             print(f"Groq API error: {response.status_code} - {response.text}")
             if return_suggestions:
                 return {
@@ -273,9 +275,10 @@ Respond with ONLY the category name, nothing else. If you're not sure, respond w
                     'confidence': 'low',
                     'alternatives': [],
                     'reasoning': error_msg,
-                    'needs_clarification': True
+                    'needs_clarification': False
                 }
-            return 'Other'
+            # Raise exception to trigger fallback in calling code
+            raise Exception(f"API error: {error_msg}")
 
         result = response.json()
         content = result['choices'][0]['message']['content'].strip()

@@ -6,7 +6,7 @@ Supports CSV, PDF, Excel (.xlsx, .xls) with password-protected PDFs
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
 from models import db, Expense, validate_category
-from utils.categorizer import categorize_expense, categorize_with_ai, is_ambiguous_description, categorize_by_keywords
+from utils.categorizer import categorize_expense, categorize_with_ai, is_ambiguous_description, categorize_by_keywords, CATEGORY_KEYWORDS
 from utils.csv_parser import parse_csv_file, validate_csv_format
 from utils.unified_parser import parse_statement, parse_statement_with_summary
 from utils.date_range_extractor import filter_by_date_range
@@ -712,25 +712,35 @@ def import_transactions():
                     if transaction_type == 'income':
                         category = 'Income'
                     else:
-                        # Try merchant-based categorization first (high confidence)
-                        merchant_strategy = get_categorization_strategy(
-                            merchant_name=parsed_transaction['merchant_name'],
-                            upi_id=parsed_transaction['upi_id'],
-                            user_id=user_id,
-                            description=transaction['description']
-                        )
-
-                        if merchant_strategy['confidence'] >= 0.80:
-                            # High confidence - use merchant categorization
-                            category = merchant_strategy['suggested_category']
+                        # PRIORITY 1: Try keyword matching first (free, reliable, no API calls)
+                        keyword_category = categorize_by_keywords(transaction['description'])
+                        if keyword_category:
+                            category = keyword_category
                         else:
-                            # Low confidence - fallback to AI
-                            suggestion = categorize_with_ai(
-                                transaction['description'],
-                                transaction['amount'],
-                                return_suggestions=True
+                            # PRIORITY 2: Try merchant-based categorization
+                            merchant_strategy = get_categorization_strategy(
+                                merchant_name=parsed_transaction['merchant_name'],
+                                upi_id=parsed_transaction['upi_id'],
+                                user_id=user_id,
+                                description=transaction['description']
                             )
-                            category = suggestion['suggested_category']
+
+                            if merchant_strategy['confidence'] >= 0.80:
+                                # High confidence - use merchant categorization
+                                category = merchant_strategy['suggested_category']
+                            else:
+                                # PRIORITY 3: Fallback to AI (may be rate limited)
+                                try:
+                                    suggestion = categorize_with_ai(
+                                        transaction['description'],
+                                        transaction['amount'],
+                                        return_suggestions=True
+                                    )
+                                    category = suggestion['suggested_category']
+                                except Exception as ai_error:
+                                    # AI failed (likely rate limited) - use default
+                                    print(f"Warning: AI categorization failed for '{transaction['description']}': {ai_error}")
+                                    category = 'Other'
 
                 # Create expense record with parsed transaction data
                 expense = Expense(
