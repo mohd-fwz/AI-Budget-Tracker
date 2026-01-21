@@ -54,6 +54,7 @@ export default function UploadView({ onUploadComplete }) {
   const [ambiguousItems, setAmbiguousItems] = useState([])
   const [clarifications, setClarifications] = useState({})
   const [processingClarifications, setProcessingClarifications] = useState(false)
+  const [acceptAllSuggestions, setAcceptAllSuggestions] = useState(false)
 
   // Settings
   const [clearPrevious, setClearPrevious] = useState(true)
@@ -195,7 +196,15 @@ export default function UploadView({ onUploadComplete }) {
   }
 
   const handleSubmitClarifications = async () => {
-    await handleImport(clarifications)
+    // If user chose to accept all suggestions, use the AI suggestions as clarifications
+    const finalClarifications = acceptAllSuggestions
+      ? ambiguousItems.reduce((acc, item) => {
+          acc[item.index] = clarifications[item.index] || item.suggested_category
+          return acc
+        }, {})
+      : clarifications
+
+    await handleImport(finalClarifications)
   }
 
   const handleImport = async (clarificationsData) => {
@@ -414,6 +423,18 @@ export default function UploadView({ onUploadComplete }) {
                 <div className="text-sm text-blue-800">
                   <p className="font-medium">AI couldn't confidently categorize these transactions</p>
                   <p className="mt-1">Please review and select the correct category for each transaction below.</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="accept-all"
+                      checked={acceptAllSuggestions}
+                      onChange={(e) => setAcceptAllSuggestions(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="accept-all" className="text-sm text-blue-800">
+                      Accept all AI suggestions without changes
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -458,7 +479,10 @@ export default function UploadView({ onUploadComplete }) {
                       <select
                         value={clarifications[item.index] || item.suggested_category}
                         onChange={(e) => handleClarificationChange(item.index, e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        disabled={acceptAllSuggestions}
+                        className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                          acceptAllSuggestions ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
                       >
                         {CATEGORIES.map(category => (
                           <option key={category} value={category}>

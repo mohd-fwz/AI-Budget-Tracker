@@ -96,21 +96,32 @@ def is_ambiguous_description(description):
         bool: True if description seems ambiguous
 
     Detection criteria:
-    - Very short descriptions (1-2 words)
-    - Contains only names (capitalized words without clear keywords)
-    - No recognizable business/merchant keywords
+    - Very short descriptions (1-2 words) that look like names
+    - Contains only capitalized words without clear business keywords
+    - Generic terms that could mean anything
     """
     if not description or len(description.strip()) < 3:
         return True
 
     words = description.strip().split()
+    clean_description = description.lower()
 
-    # If it's just 1-2 capitalized words (likely a name)
+    # If it's just 1-2 capitalized words (likely a name), but check for business context
     if len(words) <= 2 and all(word[0].isupper() for word in words if word):
-        # Check if it matches any of our keywords
-        if categorize_by_keywords(description):
-            return False  # Has clear keywords, not ambiguous
-        return True  # Looks like a person name or unclear
+        # Allow if it contains business-like keywords
+        business_indicators = ['store', 'shop', 'mart', 'center', 'cafe', 'restaurant', 'hotel', 'bank', 'atm']
+        if any(indicator in clean_description for indicator in business_indicators):
+            return False
+        # Allow if it's a known payment method or service
+        payment_indicators = ['upi', 'paytm', 'gpay', 'phonepe', 'amazon', 'flipkart', 'swiggy', 'zomato']
+        if any(indicator in clean_description for indicator in payment_indicators):
+            return False
+        return True  # Still likely a person name
+
+    # Check for generic/unclear terms
+    generic_terms = ['payment', 'transfer', 'transaction', 'debit', 'credit', 'cash', 'online']
+    if len(words) <= 3 and any(term in clean_description for term in generic_terms):
+        return True
 
     return False
 
@@ -254,26 +265,46 @@ Respond with ONLY the category name, nothing else. If you're not sure, respond w
             }
 
             for line in lines:
-                if line.startswith('CATEGORY:'):
-                    cat = line.replace('CATEGORY:', '').strip()
-                    valid_cats = list(CATEGORY_KEYWORDS.keys()) + ['Other']
+                line = line.strip()
+                if line.upper().startswith('CATEGORY:') or line.upper().startswith('CATEGORY'):
+                    cat_part = line.split(':', 1)[-1].strip() if ':' in line else line.replace('CATEGORY', '', 1).strip()
+                    # Clean up common formatting issues
+                    cat = cat_part.strip('[](){}').strip()
+                    valid_cats = list(CATEGORY_KEYWORDS.keys()) + ['Income', 'Other']
+                    # Try exact match first, then case-insensitive
                     if cat in valid_cats:
                         suggestion['suggested_category'] = cat
-                elif line.startswith('CONFIDENCE:'):
-                    conf = line.replace('CONFIDENCE:', '').strip().lower()
+                    else:
+                        # Case-insensitive match
+                        for valid_cat in valid_cats:
+                            if cat.lower() == valid_cat.lower():
+                                suggestion['suggested_category'] = valid_cat
+                                break
+                elif line.upper().startswith('CONFIDENCE:') or line.upper().startswith('CONFIDENCE'):
+                    conf_part = line.split(':', 1)[-1].strip() if ':' in line else line.replace('CONFIDENCE', '', 1).strip()
+                    conf = conf_part.lower().strip()
                     if conf in ['high', 'medium', 'low']:
                         suggestion['confidence'] = conf
-                elif line.startswith('ALTERNATIVES:'):
-                    alts = line.replace('ALTERNATIVES:', '').strip()
-                    suggestion['alternatives'] = [a.strip() for a in alts.split(',') if a.strip()]
-                elif line.startswith('REASONING:'):
-                    suggestion['reasoning'] = line.replace('REASONING:', '').strip()
+                elif line.upper().startswith('ALTERNATIVES:') or line.upper().startswith('ALTERNATIVES') or line.upper().startswith('ALTERNATIVE:'):
+                    alts_part = line.split(':', 1)[-1].strip() if ':' in line else line.replace('ALTERNATIVES', '', 1).replace('ALTERNATIVE', '', 1).strip()
+                    if alts_part and alts_part.lower() not in ['none', 'n/a', 'na']:
+                        suggestion['alternatives'] = [a.strip() for a in alts_part.split(',') if a.strip()]
+                elif line.upper().startswith('REASONING:') or line.upper().startswith('REASON') or line.upper().startswith('EXPLANATION:'):
+                    reasoning_part = line.split(':', 1)[-1].strip() if ':' in line else line.replace('REASONING', '', 1).replace('REASON', '', 1).replace('EXPLANATION', '', 1).strip()
+                    if reasoning_part:
+                        suggestion['reasoning'] = reasoning_part
 
-            # Mark as needing clarification if confidence is not high
-            suggestion['needs_clarification'] = (
-                suggestion['confidence'] in ['medium', 'low'] or
-                is_ambiguous_description(description)
+            # Mark as needing clarification more conservatively
+            # Only require clarification for:
+            # 1. Low confidence AI suggestions
+            # 2. Truly ambiguous descriptions (person names, unclear vendors)
+            # 3. When AI couldn't provide a valid category
+            needs_clarification = (
+                suggestion['confidence'] == 'low' or
+                (suggestion['confidence'] == 'medium' and is_ambiguous_description(description)) or
+                suggestion['suggested_category'] == 'Other'
             )
+            suggestion['needs_clarification'] = needs_clarification
 
             return suggestion
         else:
@@ -308,6 +339,19 @@ Respond with ONLY the category name, nothing else. If you're not sure, respond w
 
     except Exception as e:
         print(f"AI categorization error: {str(e)}")
+        # Try fallback categorization before giving up
+        fallback_category = categorize_by_keywords(description)
+        if fallback_category:
+            if return_suggestions:
+                return {
+                    'suggested_category': fallback_category,
+                    'confidence': 'low',
+                    'alternatives': ['Other'],
+                    'reasoning': f'AI failed, but keyword matching suggests {fallback_category}',
+                    'needs_clarification': True  # Still needs confirmation since AI failed
+                }
+            return fallback_category
+
         if return_suggestions:
             return {
                 'suggested_category': 'Other',

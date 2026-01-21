@@ -6,7 +6,7 @@ Supports CSV, PDF, Excel (.xlsx, .xls) with password-protected PDFs
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
 from models import db, Expense, validate_category
-from utils.categorizer import categorize_expense, categorize_with_ai, is_ambiguous_description
+from utils.categorizer import categorize_expense, categorize_with_ai, is_ambiguous_description, categorize_by_keywords
 from utils.csv_parser import parse_csv_file, validate_csv_format
 from utils.unified_parser import parse_statement, parse_statement_with_summary
 from utils.date_range_extractor import filter_by_date_range
@@ -477,14 +477,38 @@ def select_date_range():
             # PRIORITY 1: Check if we've learned this merchant before
             learned = get_learned_category(user_id, description)
 
-            if learned['found'] and learned['confidence'] >= 2:
-                # High-confidence learned mapping - automatically categorize
+            if learned['found'] and learned['confidence'] >= 3:
+                # Very high-confidence learned mapping - automatically categorize
+                clear_items.append({
+                    'transaction': transaction,
+                    'category': learned['category']
+                })
+            elif learned['found'] and learned['confidence'] >= 1:
+                # Medium-confidence learned mapping - use as AI suggestion but may need confirmation
+                # Create a pseudo-suggestion object for learned mappings
+                suggestion = {
+                    'suggested_category': learned['category'],
+                    'confidence': 'medium' if learned['confidence'] == 1 else 'high',
+                    'alternatives': [],
+                    'reasoning': f"Previously categorized as {learned['category']} ({learned['confidence']} time{'s' if learned['confidence'] > 1 else ''})",
+                    'needs_clarification': False  # Don't require clarification for learned mappings
+                }
                 clear_items.append({
                     'transaction': transaction,
                     'category': learned['category']
                 })
             else:
-                # PRIORITY 2: Get AI suggestion with confidence
+                # PRIORITY 2: Try keyword matching first (free, no API needed)
+                keyword_category = categorize_by_keywords(description)
+                if keyword_category:
+                    # Keyword match found - auto-categorize without AI
+                    clear_items.append({
+                        'transaction': transaction,
+                        'category': keyword_category
+                    })
+                    continue
+
+                # PRIORITY 3: Get AI suggestion with confidence (only if no keyword match)
                 suggestion = categorize_with_ai(description, amount, return_suggestions=True)
 
                 # Check if needs clarification
@@ -771,7 +795,17 @@ def _analyze_transactions(transactions, clear_previous=False):
         description = transaction['description']
         amount = transaction['amount']
 
-        # Get AI suggestion with confidence
+        # PRIORITY 1: Try keyword matching first (free, no API needed)
+        keyword_category = categorize_by_keywords(description)
+        if keyword_category:
+            # Keyword match found - auto-categorize without AI
+            clear_items.append({
+                'transaction': transaction,
+                'category': keyword_category
+            })
+            continue
+
+        # PRIORITY 2: Get AI suggestion with confidence (only if no keyword match)
         suggestion = categorize_with_ai(description, amount, return_suggestions=True)
 
         # Check if needs clarification
