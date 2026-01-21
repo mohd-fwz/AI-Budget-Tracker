@@ -205,6 +205,7 @@ def update_expense_category(expense_id):
         # LEARNING: Save merchant mapping so future imports use this category
         learned = False
         similar_updated = 0
+        similar_items = []
         try:
             from utils.merchant_learning import save_merchant_category, normalize_merchant_name
             result = save_merchant_category(
@@ -213,29 +214,37 @@ def update_expense_category(expense_id):
                 category=new_category
             )
 
-            # AUTO-UPDATE: Update all uncategorized or similarly named transactions
+            # AUTO-UPDATE: Find all similar transactions with same normalized merchant name
             merchant_name = normalize_merchant_name(expense.description)
             if merchant_name:
-                # Find all similar transactions with same user
+                # Find all similar transactions with same user - use normalized comparison
                 similar_expenses = Expense.query.filter(
                     Expense.user_id == expense.user_id,
-                    Expense.id != expense_id,  # Exclude current expense
-                    Expense.description.like(f'%{merchant_name}%')
+                    Expense.id != expense_id  # Exclude current expense
                 ).all()
-
-                # Update them to the same category
+                
+                # Filter by normalized merchant match (more reliable than LIKE)
                 for similar_exp in similar_expenses:
+                    similar_merchant_name = normalize_merchant_name(similar_exp.description)
+                    if similar_merchant_name == merchant_name:
+                        similar_items.append(similar_exp)
+
+                # Update all similar transactions to the same category
+                for similar_exp in similar_items:
                     similar_exp.category = new_category
                     similar_updated += 1
 
                 if similar_updated > 0:
                     db.session.commit()
                     print(f"Auto-updated {similar_updated} similar transactions for merchant: {merchant_name}")
+                    print(f"Updated descriptions: {[s.description for s in similar_items]}")
             learned = True
             print(f"Learned mapping: {expense.description} -> {new_category} ({result['action']})")
         except Exception as learn_error:
             # Don't fail the update if learning fails
             print(f"Warning: Could not save learned mapping: {learn_error}")
+            import traceback
+            traceback.print_exc()
 
         message = 'Category updated successfully'
         if similar_updated > 0:
@@ -246,6 +255,7 @@ def update_expense_category(expense_id):
             'expense': expense.to_dict(),
             'learned': learned,
             'similar_updated': similar_updated,
+            'similar_items': [s.to_dict() for s in similar_items],
             'old_category': old_category,
             'new_category': new_category
         }), 200
@@ -707,38 +717,34 @@ def import_transactions():
                     if transaction_type == 'income':
                         category = 'Income'
                     else:
-                        # PRIORITY 1: Try keyword matching first (free, reliable, no API calls)
-                        keyword_category = categorize_by_keywords(transaction['description'])
-                        if keyword_category:
-                            category = keyword_category
+                        # PRIORITY 1: Check if we've learned this merchant before
+                        learned = get_learned_category(user_id, transaction['description'])
+                        if learned['found'] and learned['confidence'] >= 1:
+                            # Use learned category (confidence >= 1 means user has confirmed it before)
+                            category = learned['category']
+                            print(f"Using learned category for '{transaction['description']}': {category} (confidence: {learned['confidence']})")
                         else:
-                            # PRIORITY 2: Check if description is ambiguous (skip AI for clear descriptions)
-                            if is_ambiguous_description(transaction['description']):
-                                # Only call AI for truly ambiguous descriptions (save tokens!)
-                                try:
-                                    suggestion = categorize_with_ai(
-                                        transaction['description'],
-                                        transaction['amount'],
-                                        return_suggestions=True
-                                    )
-                                    category = suggestion['suggested_category']
-                                except Exception as ai_error:
-                                    # AI failed (likely rate limited) - use default
-                                    print(f"Warning: AI categorization failed for '{transaction['description']}': {ai_error}")
-                                    category = 'Other'
+                            # PRIORITY 2: Try keyword matching first (free, reliable, no API calls)
+                            keyword_category = categorize_by_keywords(transaction['description'])
+                            if keyword_category:
+                                category = keyword_category
                             else:
-                                # Not ambiguous and no keyword match - rare case
-                                # Try merchant-based categorization as fallback
-                                merchant_strategy = get_categorization_strategy(
-                                    merchant_name=parsed_transaction['merchant_name'],
-                                    upi_id=parsed_transaction['upi_id'],
-                                    user_id=user_id,
-                                    description=transaction['description']
-                                )
-
-                                if merchant_strategy['confidence'] >= 0.80:
-                                    category = merchant_strategy['suggested_category']
+                                # PRIORITY 3: Check if description is ambiguous (skip AI for clear descriptions)
+                                if is_ambiguous_description(transaction['description']):
+                                    # Only call AI for truly ambiguous descriptions (save tokens!)
+                                    try:
+                                        suggestion = categorize_with_ai(
+                                            transaction['description'],
+                                            transaction['amount'],
+                                            return_suggestions=True
+                                        )
+                                        category = suggestion['suggested_category']
+                                    except Exception as ai_error:
+                                        # AI failed (likely rate limited) - use default
+                                        print(f"Warning: AI categorization failed for '{transaction['description']}': {ai_error}")
+                                        category = 'Other'
                                 else:
+                                    # Not ambiguous and no keyword match - rare case
                                     category = 'Other'
 
                 # Create expense record with parsed transaction data

@@ -97,12 +97,24 @@ export default function ExpensesView() {
     try {
       const result = await expenseAPI.updateExpenseCategory(expenseId, editingCategory)
 
-      // Show success message with learning indicator
+      // Build detailed success message with learning info
+      let message = `✓ Category updated to "${editingCategory}"\n\n`
+      
       if (result.learned) {
-        alert(`✓ Category updated to "${editingCategory}"\n\nThis merchant will be automatically categorized as "${editingCategory}" in future imports!`)
-      } else {
-        alert(`✓ Category updated to "${editingCategory}"`)
+        message += `🎓 Learned: This merchant will be automatically categorized as "${editingCategory}" in future imports!\n\n`
       }
+      
+      if (result.similar_updated > 0) {
+        message += `✨ Also updated ${result.similar_updated} similar transaction(s):\n`
+        if (result.similar_items && result.similar_items.length > 0) {
+          result.similar_items.forEach((item, idx) => {
+            const dateStr = new Date(item.date).toLocaleDateString()
+            message += `   • ${dateStr}: ${item.description} (₹${item.amount})\n`
+          })
+        }
+      }
+      
+      alert(message)
 
       setEditingExpenseId(null)
       setEditingCategory('')
